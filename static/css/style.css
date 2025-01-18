@@ -1,0 +1,98 @@
+
+.transaction-badge {
+    font-size: 0.8em;
+    padding: 0.3em 0.6em;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,0.125);
+}
+
+.progress {
+    height: 20px;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.budget-card {
+    transition: transform 0.2s;
+}
+
+.budget-card:hover {
+    transform: translateY(-5px);
+}
+
+.chart-container {
+    position: relative;
+    margin: auto;
+    height: 300px;
+}
+
+.alert {
+    margin-bottom: 0;
+    padding: 0.5rem 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .col-md-4 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* static/js/main.js */
+// Add dynamic form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+    });
+
+    // Add dynamic category filtering in transaction form
+    const typeSelect = document.querySelector('select[name="type"]');
+    const categorySelect = document.querySelector('select[name="category_id"]');
+    
+    if (typeSelect && categorySelect) {
+        typeSelect.addEventListener('change', function() {
+            const type = this.value;
+            Array.from(categorySelect.options).forEach(option => {
+                const category = option.dataset.type;
+                if (category) {
+                    option.style.display = category === type ? '' : 'none';
+                }
+            });
+            categorySelect.value = '';
+        });
+    }
+
+    // Add date range validation for budget form
+    const startDate = document.querySelector('input[name="start_date"]');
+    const endDate = document.querySelector('input[name="end_date"]');
+    
+    if (startDate && endDate) {
+        endDate.addEventListener('change', function() {
+            if (startDate.value && this.value < startDate.value) {
+                this.setCustomValidity('End date must be after start date');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+});
+
+// Add chart animations
+Chart.defaults.animation.duration = 2000;
+Chart.defaults.animation.easing = 'easeInOutQuart';

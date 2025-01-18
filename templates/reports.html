@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Financial Reports</h1>
+     
+    </div>
+
+    <!-- Report Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('generate_pdf_report') }}" id="reportFilterForm" class="row g-3">
+
+                <!-- Date Range Selection -->
+                <div class="col-md-4">
+                    <label class="form-label">Date Range</label>
+                    <select class="form-select" name="period" id="periodSelect">
+                        <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom Range</option>
+                        <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+                        <option value="week" {% if period == 'week' %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if period == 'month' %}selected{% endif %}>This Month</option>
+                        <option value="quarter" {% if period == 'quarter' %}selected{% endif %}>This Quarter</option>
+                        <option value="year" {% if period == 'year' %}selected{% endif %}>This Year</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" name="start_date" 
+                           value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" name="end_date" 
+                           value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}">
+                </div>
+
+                <!-- Additional Filters -->
+                <div class="col-md-4">
+                    <label class="form-label">Account</label>
+                    <select class="form-select" name="account_id">
+                        <option value="">All Accounts</option>
+                        {% for account in accounts %}
+                        <option value="{{ account.id }}" {% if selected_account_id == account.id %}selected{% endif %}>
+                            {{ account.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" name="category_id">
+                        <option value="">All Categories</option>
+                        {% for category in categories if not category.parent_id %}
+                        <option value="{{ category.id }}" data-type="{{ category.type }}">
+                            {{ category.name }}
+                        </option>
+                        {% if category.subcategories %}
+                            {% for subcategory in category.subcategories %}
+                                <option value="{{ subcategory.id }}" data-type="{{ subcategory.type }}" style="padding-left: 20px;">
+                                    ↳ {{ subcategory.name }}
+                                </option>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary d-block w-100">Generate PDF Report</button>
+       </div>
+            </form>
+        </div>
+    </div>
+
+    {% if transactions %}
+    <!-- Financial Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Income</h6>
+                    <h4 class="mb-0">${{ "%.2f"|format(total_income) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Expenses</h6>
+                    <h4 class="mb-0">${{ "%.2f"|format(total_expenses) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card {% if net_change >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Net Change</h6>
+                    <h4 class="mb-0">${{ "%.2f"|format(net_change) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Average Transaction</h6>
+                    <h4 class="mb-0">${{ "%.2f"|format(average_transaction) }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-4">
+        <!-- Income vs Expenses Trend -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Income vs Expenses Trend</h5>
+                    <canvas id="trendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Distribution -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Expense by Category</h5>
+                    <canvas id="categoryPieChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <!-- Daily Balance Trend -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Balance Trend</h5>
+                    <canvas id="balanceChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Distribution -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Transaction Distribution by Account</h5>
+                    <canvas id="accountChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Transactions Table -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Detailed Transactions</h5>
+            <div class="table-responsive">
+                <table class="table table-striped" id="transactionsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Account</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ transaction.description }}</td>
+                            <td>{{ transaction.category.name }}</td>
+                            <td>{{ transaction.account.name }}</td>
+                            <td>
+                                <span class="badge {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ transaction.type }}
+                                </span>
+                            </td>
+                            <td class="{% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                ${{ "%.2f"|format(transaction.amount) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Please select a date range and click "Generate Report" to view financial data.
+    </div>
+    {% endif %}
+</div>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if transactions %}
+        // Prepare data for charts
+        const trendData = {{ trend_data|tojson }};
+        const categoryData = {{ category_data|tojson }};
+        const balanceData = {{ balance_data|tojson }};
+        const accountData = {{ account_data|tojson }};
+
+        // Income vs Expenses Trend Chart
+        new Chart(document.getElementById('trendChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: trendData.labels,
+                datasets: [{
+                    label: 'Income',
+                    data: trendData.income,
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    fill: true
+                }, {
+                    label: 'Expenses',
+                    data: trendData.expenses,
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+
+        // Category Pie Chart
+        new Chart(document.getElementById('categoryPieChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: categoryData.labels,
+                datasets: [{
+                    data: categoryData.values,
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                        '#9966FF', '#FF9F40', '#FF6384', '#36A2EB'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+
+        // Daily Balance Chart
+        new Chart(document.getElementById('balanceChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: balanceData.labels,
+                datasets: [{
+                    label: 'Balance',
+                    data: balanceData.values,
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Account Distribution Chart
+        new Chart(document.getElementById('accountChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: accountData.labels,
+                datasets: [{
+                    label: 'Transaction Volume',
+                    data: accountData.values,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        {% endif %}
+
+        // Handle date range selection
+        const periodSelect = document.getElementById('periodSelect');
+        const startDateInput = document.querySelector('input[name="start_date"]');
+        const endDateInput = document.querySelector('input[name="end_date"]');
+
+        periodSelect.addEventListener('change', function() {
+            const today = new Date();
+            let start = new Date();
+            let end = new Date();
+
+            switch(this.value) {
+                case 'today':
+                    break;
+                case 'week':
+                    start.setDate(today.getDate() - 7);
+                    break;
+                case 'month':
+                    start.setMonth(today.getMonth() - 1);
+                    break;
+                case 'quarter':
+                    start.setMonth(today.getMonth() - 3);
+                    break;
+                case 'year':
+                    start.setFullYear(today.getFullYear() - 1);
+                    break;
+                default:
+                    return;
+            }
+
+            startDateInput.value = start.toISOString().split('T')[0];
+            endDateInput.value = end.toISOString().split('T')[0];
+        });
+    });
+
+   
+
+  
+</script>
+{% endblock %}
+{% endblock %}

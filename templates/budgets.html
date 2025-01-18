@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-0">Budget Management</h1>
+            <p class="text-muted">Track and manage your spending limits</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+            <i class="fas fa-plus"></i> Set New Budget
+        </button>
+    </div>
+
+    <!-- Budget Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Budget</h6>
+                    <h3 class="mb-0">${{ "%.2f"|format(total_budget) }}</h3>
+                    <small class="text-white-50">For Current Period</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Available</h6>
+                    <h3 class="mb-0">${{ "%.2f"|format(available_budget) }}</h3>
+                    <small class="text-white-50">Remaining Budget</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Spent</h6>
+                    <h3 class="mb-0">${{ "%.2f"|format(total_spent) }}</h3>
+                    <small class="text-white-50">Total Expenses</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Active Budgets</h6>
+                    <h3 class="mb-0">{{ active_budgets_count }}</h3>
+                    <small class="text-white-50">Currently Tracking</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Progress Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Budget Overview</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="budgetOverviewChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Category Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryDistributionChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Budgets Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Active Budgets</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for budget in budgets %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 {% if budget.alert_status == 'danger' %}border-danger{% elif budget.alert_status == 'warning' %}border-warning{% endif %}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">{{ budget.category.name }}</h5>
+                                    <p class="text-muted mb-0">
+                                        {{ budget.start_date.strftime('%Y-%m-%d') }} to {{ budget.end_date.strftime('%Y-%m-%d') }}
+                                    </p>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-link" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="#" 
+                                               onclick="editBudget({{ budget.id }}, '{{ budget.category.name }}', {{ budget.amount }})">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="#" 
+                                               onclick="deleteBudget({{ budget.id }})">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Budget: ${{ "%.2f"|format(budget.amount) }}</span>
+                                <span>Spent: ${{ "%.2f"|format(budget.spent) }}</span>
+                            </div>
+
+                            <div class="progress mb-2" style="height: 10px;">
+                                <div class="progress-bar {% if budget.percentage > 90 %}bg-danger{% elif budget.percentage > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                                     role="progressbar"
+                                     style="width: {{ budget.percentage if budget.percentage <= 100 else 100 }}%">
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">
+                                    {{ budget.percentage|round }}% Used
+                                </small>
+                                <small class="text-muted">
+                                    Remaining: ${{ "%.2f"|format(budget.remaining) }}
+                                </small>
+                            </div>
+
+                            {% if budget.alert_status %}
+                            <div class="alert alert-{{ budget.alert_status }} mt-3 mb-0">
+                                {% if budget.alert_status == 'danger' %}
+                                <i class="fas fa-exclamation-triangle"></i> Budget exceeded!
+                                {% elif budget.alert_status == 'warning' %}
+                                <i class="fas fa-exclamation-circle"></i> Approaching budget limit
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Budget Modal -->
+<div class="modal fade" id="addBudgetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Set New Budget</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="addBudgetForm">
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" class="form-select" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Budget Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="amount" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" name="start_date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">End Date</label>
+                                <input type="date" name="end_date" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Set Budget</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Budget Modal -->
+<div class="modal fade" id="editBudgetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Budget</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="editBudgetForm">
+                    <input type="hidden" name="budget_id" id="editBudgetId">
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <input type="text" id="editBudgetCategory" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Budget Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="amount" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" name="start_date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">End Date</label>
+                                <input type="date" name="end_date" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Budget</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Budget Overview Chart
+        const budgetCtx = document.getElementById('budgetOverviewChart').getContext('2d');
+        new Chart(budgetCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ budget_labels|tojson }},
+                datasets: [{
+                    label: 'Budget Amount',
+                    data: {{ budget_amounts|tojson }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Spent Amount',
+                    data: {{ spent_amounts|tojson }},
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Category Distribution Chart
+        const categoryCtx = document.getElementById('categoryDistributionChart').getContext('2d');
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ category_labels|tojson }},
+                datasets: [{
+                    data: {{ category_amounts|tojson }},
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                        '#9966FF', '#FF9F40', '#33CC99', '#FF99CC'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Form Validation
+        const validateDates = function(startDate, endDate) {
+            if (startDate && endDate && startDate > endDate) {
+                alert('End date must be after start date');
+                return false;
+            }
+            return true;
+        };
+
+        // Add Budget Form Handler
+        document.getElementById('addBudgetForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const startDate = new Date(this.start_date.value);
+            const endDate = new Date(this.end_date.value);
+            
+            if (validateDates(startDate, endDate)) {
+                const formData = new FormData(this);
+                fetch('{{ url_for("budgets") }}', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                });
+            }
+        });
+
+        // Edit Budget Form Handler
+        document.getElementById('editBudgetForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const startDate = new Date(this.start_date.value);
+            const endDate = new Date(this.end_date.value);
+            
+            if (validateDates(startDate, endDate)) {
+                const formData = new FormData(this);
+                const budgetId = formData.get('budget_id');
+                fetch(`/api/budgets/${budgetId}`, {
+                    method: 'PUT',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                });
+            }
+        });
+    });
+
+    // Edit Budget Function
+    function editBudget(budgetId, categoryName, amount) {
+        const modal = new bootstrap.Modal(document.getElementById('editBudgetModal'));
+        const form = document.getElementById('editBudgetForm');
+        form.budget_id.value = budgetId;
+        form.querySelector('#editBudgetCategory').value = categoryName;
+        form.amount.value = amount;
+
+        // Fetch current budget details
+        fetch(`/api/budgets/${budgetId}`)
+            .then(response => response.json())
+            .then(data => {
+                form.start_date.value = data.start_date.split('T')[0];
+                form.end_date.value = data.end_date.split('T')[0];
+                modal.show();
+            });
+    }
+
+    // Delete Budget Function
+    function deleteBudget(budgetId) {
+        if (confirm('Are you sure you want to delete this budget?')) {
+            fetch(`/api/budgets/${budgetId}`, {
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                }
+            });
+        }
+    }
+
+    // Update Budget Progress Function
+    function updateBudgetProgress() {
+        fetch('/api/budgets/progress')
+            .then(response => response.json())
+            .then(data => {
+                Object.keys(data).forEach(budgetId => {
+                    const budget = data[budgetId];
+                    const progressBar = document.querySelector(`#budget-${budgetId} .progress-bar`);
+                    const percentageText = document.querySelector(`#budget-${budgetId} .percentage`);
+                    const remainingText = document.querySelector(`#budget-${budgetId} .remaining`);
+                    
+                    if (progressBar) {
+                        const percentage = (budget.spent / budget.amount) * 100;
+                        progressBar.style.width = `${Math.min(percentage, 100)}%`;
+                        progressBar.className = `progress-bar ${
+                            percentage > 90 ? 'bg-danger' : 
+                            percentage > 70 ? 'bg-warning' : 
+                            'bg-success'
+                        }`;
+                    }
+                    
+                    if (percentageText) {
+                        percentageText.textContent = `${Math.round(percentage)}% Used`;
+                    }
+                    
+                    if (remainingText) {
+                        remainingText.textContent = `${(budget.amount - budget.spent).toFixed(2)} Remaining`;
+                    }
+                });
+            });
+    }
+
+    // Set up periodic progress updates
+    setInterval(updateBudgetProgress, 60000); // Update every minute
+
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Date range presets
+    document.querySelectorAll('[data-date-preset]').forEach(button => {
+        button.addEventListener('click', function() {
+            const preset = this.dataset.datePreset;
+            const startDate = document.querySelector('input[name="start_date"]');
+            const endDate = document.querySelector('input[name="end_date"]');
+            
+            const today = new Date();
+            let start = new Date();
+            let end = new Date();
+
+            switch(preset) {
+                case 'month':
+                    start = new Date(today.getFullYear(), today.getMonth(), 1);
+                    end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+                case 'quarter':
+                    const quarter = Math.floor(today.getMonth() / 3);
+                    start = new Date(today.getFullYear(), quarter * 3, 1);
+                    end = new Date(today.getFullYear(), (quarter + 1) * 3, 0);
+                    break;
+                case 'year':
+                    start = new Date(today.getFullYear(), 0, 1);
+                    end = new Date(today.getFullYear(), 11, 31);
+                    break;
+            }
+
+            startDate.value = start.toISOString().split('T')[0];
+            endDate.value = end.toISOString().split('T')[0];
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

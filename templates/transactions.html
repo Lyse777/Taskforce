@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Transactions</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+            <i class="fas fa-plus"></i> Add Transaction
+        </button>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="filterForm" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Date Range</label>
+                    <select class="form-select" id="dateRange">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Account</label>
+                    <select class="form-select" name="account_filter">
+                        <option value="all">All Accounts</option>
+                        {% for account in accounts %}
+                        <option value="{{ account.id }}">{{ account.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" name="category_filter">
+                        <option value="all">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" name="type_filter">
+                        <option value="all">All Types</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+                </div>
+                <div class="col-12 custom-date-range d-none">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control" name="start_date">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-control" name="end_date">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transactions Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Income</h5>
+                    <h3 class="mb-0">${{ "%.2f"|format(total_income|default(0)) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Expenses</h5>
+                    <h3 class="mb-0">${{ "%.2f"|format(total_expenses|default(0)) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card {% if net_balance|default(0) >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Net Balance</h5>
+                    <h3 class="mb-0">${{ "%.2f"|format(net_balance|default(0)) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Account</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ transaction.description }}</td>
+                            <td>{{ transaction.category.name }}</td>
+                            <td>{{ transaction.account.name }}</td>
+                            <td class="{% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                ${{ "%.2f"|format(transaction.amount) }}
+                            </td>
+                            <td>
+                                <span class="badge {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ transaction.type }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="editTransaction({{ transaction.id }})"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editTransactionModal">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteTransaction({{ transaction.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="addTransactionForm">
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" required>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account</label>
+                        <select name="account_id" class="form-select" required>
+                            {% for account in accounts %}
+                            <option value="{{ account.id }}">{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" class="form-select" required>
+                            <option value="">Select Category</option>
+                            {% for category in categories if not category.parent_id %}
+                                <option value="{{ category.id }}" data-type="{{ category.type }}">
+                                    {{ category.name }}
+                                </option>
+                                {% if category.subcategories %}
+                                    {% for subcategory in category.subcategories %}
+                                        <option value="{{ subcategory.id }}" data-type="{{ subcategory.type }}" style="padding-left: 20px;">
+                                            ↳ {{ subcategory.name }}
+                                        </option>
+                                        {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Transaction</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Transaction Modal -->
+<div class="modal fade" id="editTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="editTransactionForm">
+                    <input type="hidden" name="transaction_id" id="edit_transaction_id">
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" required>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account</label>
+                        <select name="account_id" class="form-select" required>
+                            {% for account in accounts %}
+                            <option value="{{ account.id }}">{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" class="form-select" required>
+                            <option value="">Select Category</option>
+                            {% for category in categories if not category.parent_id %}
+                                <option value="{{ category.id }}" data-type="{{ category.type }}">
+                                    {{ category.name }}
+                                </option>
+                                {% if category.subcategories %}
+                                    {% for subcategory in category.subcategories %}
+                                        <option value="{{ subcategory.id }}" data-type="{{ subcategory.type }}" style="padding-left: 20px;">
+                                            ↳ {{ subcategory.name }}
+                                        </option>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Transaction</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% block scripts %}
+<script>
+    let isSubmitting = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize all filter selects
+        initializeFilters();
+        
+        // Handle date range selector
+        const dateRangeSelect = document.getElementById('dateRange');
+        const customDateRange = document.querySelector('.custom-date-range');
+        
+        dateRangeSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customDateRange.classList.remove('d-none');
+            } else {
+                customDateRange.classList.add('d-none');
+                applyFilters();
+            }
+        });
+
+        // Handle category filtering based on transaction type
+        const typeSelects = document.querySelectorAll('select[name="type"]');
+        typeSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                const form = this.closest('form');
+                const categorySelect = form.querySelector('select[name="category_id"]');
+                filterCategories(this.value, categorySelect);
+            });
+        });
+
+        // Set current date as default for new transactions
+        const today = new Date().toISOString().split('T')[0];
+        document.querySelector('#addTransactionForm [name="date"]').value = today;
+    });
+
+    function initializeFilters() {
+        const filterForm = document.getElementById('filterForm');
+        
+        // Add change event listeners to all filter controls
+        filterForm.querySelectorAll('select, input').forEach(control => {
+            control.addEventListener('change', function() {
+                // Only apply filters immediately if it's not a custom date range
+                if (!(this.type === 'date' && dateRangeSelect.value !== 'custom')) {
+                    applyFilters();
+                }
+            });
+        });
+
+        // Set initial values from URL parameters
+        const params = new URLSearchParams(window.location.search);
+        for (const [key, value] of params) {
+            const control = filterForm.querySelector(`[name="${key}"]`);
+            if (control) {
+                control.value = value;
+            }
+        }
+    }
+
+    function applyFilters() {
+        const formData = new FormData(document.getElementById('filterForm'));
+        const params = new URLSearchParams();
+
+        for (let [key, value] of formData.entries()) {
+            if (value && value !== '') {
+                params.append(key, value);
+            }
+        }
+
+        // Handle date range
+        const dateRange = document.getElementById('dateRange').value;
+        params.append('date_range', dateRange);
+
+        if (dateRange === 'custom') {
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+        }
+
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
+    }
+
+    function filterCategories(type, categorySelect) {
+        if (!categorySelect) return;
+        
+        const options = categorySelect.querySelectorAll('option');
+        let hasVisibleSelection = false;
+
+        options.forEach(option => {
+            if (option.dataset.type) {
+                const shouldShow = option.dataset.type === type;
+                option.style.display = shouldShow ? '' : 'none';
+                if (shouldShow && option.selected) {
+                    hasVisibleSelection = true;
+                }
+            }
+        });
+
+        // If no visible option is selected, select the first visible option
+        if (!hasVisibleSelection) {
+            const firstVisible = Array.from(options).find(opt => 
+                opt.style.display !== 'none' && opt.dataset.type === type
+            );
+            if (firstVisible) {
+                firstVisible.selected = true;
+            }
+        }
+    }
+
+    async function editTransaction(transactionId) {
+        try {
+            const response = await fetch(`/api/transactions/${transactionId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch transaction details');
+            }
+            
+            const data = await response.json();
+            const form = document.getElementById('editTransactionForm');
+            
+            // Populate form fields
+            form.querySelector('[name="transaction_id"]').value = data.id;
+            form.querySelector('[name="type"]').value = data.type;
+            form.querySelector('[name="amount"]').value = data.amount;
+            form.querySelector('[name="date"]').value = data.date;
+            form.querySelector('[name="description"]').value = data.description;
+            form.querySelector('[name="account_id"]').value = data.account_id;
+            
+            // Handle category selection
+            const categorySelect = form.querySelector('[name="category_id"]');
+            filterCategories(data.type, categorySelect);
+            categorySelect.value = data.category_id;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editTransactionModal'));
+            modal.show();
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error loading transaction details');
+        }
+    }
+
+    async function deleteTransaction(transactionId) {
+        if (!confirm('Are you sure you want to delete this transaction?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/transactions/${transactionId}`, {
+                method: 'DELETE',
+            });
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to delete transaction');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error deleting transaction');
+        }
+    }
+
+    // Generic form submission handler
+    async function handleFormSubmit(form, url, method = 'POST') {
+        if (isSubmitting) return;
+        
+        isSubmitting = true;
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(url, {
+                method: method,
+                body: formData
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Operation failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred');
+        } finally {
+            isSubmitting = false;
+        }
+    }
+
+    // Handle form submissions
+    document.getElementById('addTransactionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        handleFormSubmit(this, '/transactions');
+    });
+
+    document.getElementById('editTransactionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const transactionId = this.querySelector('[name="transaction_id"]').value;
+        handleFormSubmit(this, `/api/transactions/${transactionId}`, 'PUT');
+    });
+
+    // Reset submission flag and form when modals are closed
+    ['addTransactionModal', 'editTransactionModal'].forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function() {
+                isSubmitting = false;
+                const form = this.querySelector('form');
+                if (form) {
+                    form.reset();
+                    // Reset category visibility
+                    const typeSelect = form.querySelector('[name="type"]');
+                    const categorySelect = form.querySelector('[name="category_id"]');
+                    if (typeSelect && categorySelect) {
+                        filterCategories(typeSelect.value, categorySelect);
+                    }
+                }
+            });
+
+            // Reset submission flag when modal is opened
+            modal.addEventListener('show.bs.modal', function() {
+                isSubmitting = false;
+            });
+        }
+    });
+
+    // Add error handling for unmatched categories and transaction types
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const typeSelect = this.querySelector('[name="type"]');
+            const categorySelect = this.querySelector('[name="category_id"]');
+            
+            if (typeSelect && categorySelect) {
+                const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+                if (selectedOption.dataset.type !== typeSelect.value) {
+                    e.preventDefault();
+                    alert('Please select a category that matches the transaction type');
+                    return false;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

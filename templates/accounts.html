@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-0">Accounts</h1>
+            <p class="text-muted">Manage your financial accounts</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+            <i class="fas fa-plus"></i> Add Account
+        </button>
+    </div>
+
+    <!-- Account Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Balance</h6>
+                    <h3 class="mb-0">${{ "%.2f"|format(accounts|sum(attribute='balance')) }}</h3>
+                    <small class="text-white-50">Across all accounts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Income</h6>
+                    <h3 class="mb-0">${{ "%.2f"|format(monthly_income|default(0)) }}</h3>
+                    <small class="text-white-50">This month</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Expenses</h6>
+                    <h3 class="mb-0">${{ "%.2f"|format(monthly_expenses|default(0)) }}</h3>
+                    <small class="text-white-50">This month</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accounts List -->
+    <div class="row">
+        {% for account in accounts %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ account.name }}</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-dark" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" 
+                                   data-bs-target="#editAccountModal"
+                                   onclick="editAccount({{ account.id }}, '{{ account.name }}')">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('transactions', account_id=account.id) }}">
+                                    <i class="fas fa-list"></i> View Transactions
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="#" 
+                                   onclick="deleteAccount({{ account.id }})">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="mb-0 {% if account.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(account.balance) }}
+                        </h2>
+                        <span class="badge bg-light text-dark">
+                            {{ account.transactions|length }} transactions
+                        </span>
+                    </div>
+
+                    <!-- Recent Transactions -->
+                    {% if account.recent_transactions %}
+                    <div class="border-top pt-3">
+                        <h6 class="text-muted mb-3">Recent Transactions</h6>
+                        {% for transaction in account.recent_transactions %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <small class="text-muted">{{ transaction.date.strftime('%Y-%m-%d') }}</small>
+                                <div>{{ transaction.description }}</div>
+                            </div>
+                            <span class="{% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                {{ "+" if transaction.type == 'income' else "-" }}
+                                ${{ "%.2f"|format(transaction.amount) }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal fade" id="addAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="addAccountForm">
+                    <div class="mb-3">
+                        <label class="form-label">Account Name</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Initial Balance</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="initial_balance" class="form-control" value="0">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Account Modal -->
+<div class="modal fade" id="editAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="editAccountForm">
+                    <input type="hidden" name="account_id" id="editAccountId">
+                    <div class="mb-3">
+                        <label class="form-label">Account Name</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('transactions') }}" id="addTransactionForm">
+                    <input type="hidden" name="account_id" id="transactionAccountId">
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" required>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="amount" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" class="form-select" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" data-type="{{ category.type }}">
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Transaction</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Edit Account
+    function editAccount(accountId, accountName) {
+        const form = document.getElementById('editAccountForm');
+        form.account_id.value = accountId;
+        form.name.value = accountName;
+    }
+
+    // Delete Account
+    function deleteAccount(accountId) {
+        if (confirm('Are you sure you want to delete this account? All associated transactions will also be deleted.')) {
+            fetch(`/api/accounts/${accountId}`, {
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    return response.json().then(data => {
+                        alert(data.error || 'Failed to delete account');
+                    });
+                }
+            });
+        }
+    }
+
+    // Set Account for Transaction
+    function setAccountForTransaction(accountId) {
+        document.getElementById('transactionAccountId').value = accountId;
+    }
+
+    // Form Submission Handlers
+    document.getElementById('addAccountForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('{{ url_for("accounts") }}', {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    });
+
+    document.getElementById('editAccountForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const accountId = formData.get('account_id');
+
+        fetch(`/api/accounts/${accountId}`, {
+            method: 'PUT',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    });
+
+    // Category Filter based on Transaction Type
+    const typeSelect = document.querySelector('select[name="type"]');
+    const categorySelect = document.querySelector('select[name="category_id"]');
+    
+    if (typeSelect && categorySelect) {
+        typeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+            const options = categorySelect.querySelectorAll('option');
+            
+            options.forEach(option => {
+                const categoryType = option.dataset.type;
+                if (categoryType) {
+                    option.style.display = categoryType === selectedType ? '' : 'none';
+                }
+            });
+
+            categorySelect.value = '';
+        });
+
+        // Initial filtering
+        typeSelect.dispatchEvent(new Event('change'));
+    }
+</script>
+{% endblock %}
+{% endblock %}

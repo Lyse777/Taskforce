@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Financial Report</title>
+    <style>
+        @page {
+            margin: 2.5cm;
+            @top-center {
+                content: "Financial Report";
+                font-size: 12pt;
+            }
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10pt;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2cm;
+        }
+        .summary {
+            margin-bottom: 1.5cm;
+        }
+        .summary-box {
+            border: 1px solid #ddd;
+            padding: 1cm;
+            margin-bottom: 1cm;
+            background-color: #f9f9f9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1cm 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.3cm;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .income { color: #28a745; }
+        .expense { color: #dc3545; }
+        .page-break { page-break-after: always; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Financial Report</h1>
+        <p>{{ start_date.strftime('%B %d, %Y') }} to {{ end_date.strftime('%B %d, %Y') }}</p>
+        <p>Generated for: {{ user.username }}</p>
+        <p>Generated on: {{ datetime.now().strftime('%B %d, %Y %H:%M:%S') }}</p>
+    </div>
+
+    <div class="summary">
+        <div class="summary-box">
+            <h2>Financial Summary</h2>
+            <table>
+                <tr>
+                    <td><strong>Total Income:</strong></td>
+                    <td class="income">${{ "%.2f"|format(total_income) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Expenses:</strong></td>
+                    <td class="expense">${{ "%.2f"|format(total_expenses) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Net Change:</strong></td>
+                    <td class="{{ 'income' if net_change >= 0 else 'expense' }}">${{ "%.2f"|format(net_change) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Average Transaction:</strong></td>
+                    <td>${{ "%.2f"|format(average_transaction) }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="transactions">
+        <h2>Transaction Details</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Account</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ transaction.description }}</td>
+                    <td>{{ transaction.category.name }}</td>
+                    <td>{{ transaction.account.name }}</td>
+                    <td>{{ transaction.type }}</td>
+                    <td class="{{ transaction.type }}">${{ "%.2f"|format(transaction.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
