@@ -113,65 +113,46 @@ To deploy your own instance:
 
 ## Application Screenshots
 
-### 1. Login Page
-- Secure authentication interface
-- User-friendly login form
-- Registration link for new users
+### 1. Register Interface
+![Register](screenshots/Register.jpeg)
+A clean registration interface where new users can create their accounts with username and secure password.
 
-### 2. Registration Page
-- New user registration form
-- Password requirements
-- Account creation interface
+### 2. Login Interface
+![Login](screenshots/Login.jpeg)
+Secure login page with username/password authentication and "Remember me" functionality.
 
-### 3. Dashboard
-- Overview of total balance
-- Recent transactions
-- Income vs Expenses charts
-- Budget alerts
-- Category distribution
+### 3. Dashboard Overview
+![Dashboard](screenshots/Dashboard.jpeg)
+Main dashboard displaying total balance, monthly summaries, income vs expenses chart, recent transactions, and budget alerts.
 
-### 4. Accounts Page
-- List of all accounts
-- Account balances
-- Add new account functionality
-- Transaction history per account
+### 4. Accounts Management
+![Accounts](screenshots/Accounts.jpeg)
+Comprehensive view of all financial accounts with balances and transaction counts.
 
-### 5. Categories Page
-- Category management interface
-- Add/Edit categories and subcategories
-- Category hierarchy view
-- Budget allocation per category
+### 5. Budget Management
+![Budgets](screenshots/Budgets.jpeg)
+Budget tracking interface with visual representations of spending limits and current progress.
 
-### 6. Transactions Page
-- Transaction list with filters
-- Add new transaction form
-- Search and sort functionality
-- Transaction details view
+### 6. Expense Categories
+![Categories-Expenses](screenshots/Categories-Expenses.jpeg)
+Expense category management with main categories and subcategories for expense tracking.
 
-### 7. Budgets Page
-- Budget setting interface
-- Budget progress tracking
-- Category-wise budget allocation
-- Budget alerts and notifications
+### 7. Income Categories
+![Categories-Income](screenshots/Categories-Income.jpeg)
+Income category management for organizing different sources of income.
 
-### 8. Reports Page
-- Customizable report generation
-- Date range selection
-- Account and category filters
-- PDF export functionality
+### 8. Transactions List
+![Transactions](screenshots/Transactions.jpeg)
+Detailed transaction history with filtering options and transaction management tools.
 
-### 9. Transaction Details
-- Detailed view of individual transactions
-- Edit transaction capability
-- Category and account information
+### 9. Reports Interface
+![Reports](screenshots/Reports.jpeg)
+Customizable financial reporting interface with various filtering options.
 
-### 10. Budget Alerts
-- Visual budget warnings
-- Progress bars for budget tracking
-- Notification system
+### 10. PDF Report View
+![Reports-PDF](screenshots/Reports-PDF.jpeg)
+Generated PDF report showing financial summaries and transaction details.
 
-### 11. Analytics Dashboard
-- Visual representations of financial data
-- Trend analysis
-- Category distribution charts
-- Income vs Expense comparisons
+### 11. Logout Option
+![Logout](screenshots/Logout.jpeg)
+Secure logout functionality accessible from any page.
