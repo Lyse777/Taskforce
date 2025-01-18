@@ -62,7 +62,7 @@ Before setting up the project, ensure you have the following installed:
 
 1. **Clone the Repository**
    ```bash
-   git clone <your-repository-url>
+   git clone https://github.com/Lyse777/Taskforce.git
    cd wallet-app
    ```
 
