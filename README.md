@@ -1,4 +1,4 @@
-# Personal Wallet Web Application
+# Wallet Web Application
 
 A comprehensive web-based solution for tracking personal finances, managing multiple accounts, and monitoring expenses across different categories. This application helps users maintain better control over their financial activities by providing detailed insights and reports.
 
