@@ -2,7 +2,7 @@
 
 A comprehensive web-based solution for tracking personal finances, managing multiple accounts, and monitoring expenses across different categories. This application helps users maintain better control over their financial activities by providing detailed insights and reports.
 
-Live Demo: [[https://taskforce-n9sg.onrender.com](https://taskforce-n9sg.onrender.com)](https://taskforce-n9sg.onrender.com)
+Live Demo: https://taskforce-n9sg.onrender.com
 
 ## Features and Functionalities
 
