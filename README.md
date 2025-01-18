@@ -100,28 +100,6 @@ Before setting up the project, ensure you have the following installed:
 
 The application will be available at `http://localhost:5000`
 
-## Project Structure
-```
-wallet_app/
-├── static/
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-│       └── main.js
-├── templates/
-│   ├── auth/
-│   │   ├── register.html
-│   │   └── login.html
-│   ├── base.html
-│   ├── dashboard.html
-│   ├── accounts.html
-│   ├── categories.html
-│   ├── transactions.html
-│   ├── budgets.html
-│   └── reports.html
-└── app.py
-```
-
 ## Deployment
 
 The application is currently deployed on Render and can be accessed at [https://taskforce-n9sg.onrender.com](https://taskforce-n9sg.onrender.com)
